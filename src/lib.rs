@@ -1,4 +1,4 @@
-#![doc = include_str!("../README.md")] 
+#![doc = include_str!("../README.md")]
 
 // -------------------------------------------------------------------------------------------------
 
@@ -10,4 +10,7 @@ mod parser;
 
 // re-export generator and error as public interface
 pub use error::Error;
-pub use generator::{generate_docs, options::Options};
+pub use generator::{
+    generate_docs,
+    options::{Options, OutputOrder},
+};

@@ -5,13 +5,13 @@ pub(crate) mod toc;
 
 // -------------------------------------------------------------------------------------------------
 
-use std::{fs::*, io::Write};
+use std::{fs::*, io::Write, path::Path};
 
 use crate::{
     error::Error,
     generator::{
         library::Library,
-        options::Options,
+        options::{Options, OutputOrder},
         toc::{replace_toc_in_file, TocEntry},
     },
 };
@@ -22,14 +22,34 @@ use crate::{
 /// then runs it on the given type annotated library file to generate documentation.
 ///
 /// Resulting markdown files are generated and written to the output path as specified
-/// in the options.
+/// by the options.
 pub fn generate_docs(options: &Options) -> Result<(), Error> {
+    // validate options
+    if !Path::exists(&options.library) {
+        return Err(Error::Options(format!(
+            "source path does not exists: `{}`",
+            options.library.as_path().to_string_lossy(),
+        )));
+    }
+    if !Path::exists(&options.output) {
+        return Err(Error::Options(format!(
+            "output path does not exists: `{}`",
+            options.output.as_path().to_string_lossy(),
+        )));
+    }
+    if options.order == OutputOrder::ByClass && options.namespace.is_empty() {
+        return Err(Error::Options(
+            "the order by-class option requires a namespace to be set too".to_string(),
+        ));
+    }
+
     // parse API and create docs
-    let lib = Library::from_path(&options.library)?;
-    let docs = lib.export_docs();
+    let lib = Library::from_path(&options.library, options)?;
+    let docs = lib.export_docs(options);
 
     // clear previously generated API doc files (except README.md)
     let api_path = options.output.clone().join("API");
+    println!("Writing docs to: `{}`", api_path.to_string_lossy());
     if !api_path.exists() {
         create_dir(api_path.clone())?;
     } else {
@@ -49,7 +69,7 @@ pub fn generate_docs(options: &Options) -> Result<(), Error> {
     // write docs to files and keep track of the TOC
     let mut toc_links = vec![];
     for (name, content) in &docs {
-        let toc_entry = TocEntry::from(name);
+        let toc_entry = TocEntry::from(name, options);
         toc_links.push(toc_entry.link);
         let dir_path = api_path.clone().join(toc_entry.file_path.clone());
         let file_path = dir_path.clone().join(toc_entry.file_name + ".md");

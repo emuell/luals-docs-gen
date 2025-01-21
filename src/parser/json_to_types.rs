@@ -9,11 +9,12 @@ use crate::parser::{
 // -------------------------------------------------------------------------------------------------
 
 impl Def {
-    pub fn from_definition(d: &Definition) -> Option<Self> {
-        if let Some(first) = d.defines.first() {
+    pub fn from_definition(definition: &Definition, namespace: &str) -> Option<Self> {
+        if let Some(first) = definition.defines.first() {
             match first.lua_type {
                 Type::Doc(Doc::Class) => Some(Self::Class(Class::from_definition(
-                    d,
+                    definition,
+                    namespace,
                     &first.file,
                     first.start,
                 ))),
@@ -22,20 +23,20 @@ impl Def {
                 Type::Doc(Doc::Enum) => Some(Self::Enum(Enum {
                     file: Some(first.file.clone().into()),
                     line_number: Some(first.start),
-                    name: d.name.clone(),
-                    desc: d.rawdesc.clone().unwrap_or_default(),
+                    name: definition.name.clone(),
+                    desc: definition.rawdesc.clone().unwrap_or_default(),
                 })),
 
                 Type::Doc(Doc::Alias) => Some(Self::Alias(Alias {
                     file: Some(first.file.clone().into()),
                     line_number: Some(first.start),
-                    desc: d.rawdesc.clone(),
-                    name: d.name.clone(),
+                    desc: definition.rawdesc.clone(),
+                    name: definition.name.clone(),
                     kind: first
                         .clone()
                         .extends
                         .map(|e| Kind::from_string(&e.view))
-                        .unwrap_or(Kind::Unresolved(d.name.clone())),
+                        .unwrap_or(Kind::Unresolved(definition.name.clone())),
                 })),
 
                 Type::SetField | Type::SetGlobal => {
@@ -44,8 +45,8 @@ impl Def {
                             Type::Lua(LuaKind::Function) => Function::from_extend(
                                 extend,
                                 first.file.clone().into(),
-                                d.name.clone(),
-                                d.rawdesc.clone().unwrap_or_default(),
+                                definition.name.clone(),
+                                definition.rawdesc.clone().unwrap_or_default(),
                             )
                             .map(Self::Function),
                             _ => None,
@@ -197,20 +198,25 @@ impl Function {
 // -------------------------------------------------------------------------------------------------
 
 impl Class {
-    fn from_definition(d: &Definition, file: &str, line_number: u32) -> Self {
+    fn from_definition(
+        definition: &Definition,
+        namespace: &str,
+        file: &str,
+        line_number: u32,
+    ) -> Self {
         Self {
             file: Some(file.into()),
             line_number: Some(line_number),
-            scope: Scope::from_name(&d.name),
-            name: d.name.clone(),
-            fields: d
+            scope: Scope::from_name(&definition.name, namespace),
+            name: definition.name.clone(),
+            fields: definition
                 .fields
                 .clone()
                 .into_iter()
                 .filter(Field::is_field)
                 .filter_map(Var::from_field)
                 .collect(),
-            functions: d
+            functions: definition
                 .fields
                 .clone()
                 .into_iter()
@@ -219,7 +225,7 @@ impl Class {
                 .collect(),
             enums: vec![], // enums will get added in Library
             constants: vec![],
-            desc: d.rawdesc.clone().unwrap_or_default(),
+            desc: definition.rawdesc.clone().unwrap_or_default(),
         }
     }
 }

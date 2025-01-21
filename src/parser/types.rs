@@ -243,21 +243,40 @@ pub enum Scope {
 }
 
 impl Scope {
-    pub fn from_name(name: &str) -> Self {
-        if ["global", "pattern"].contains(&name) {
-            Scope::Global
-        } else if ["bit", "debug", "io", "math", "os", "table"].contains(&name) {
-            Scope::Modules
+    pub fn from_name(name: &str, namespace: &str) -> Self {
+        const LUA_STD_LIBS: [&str; 8] = ["bit", "debug", "io", "math", "os", "table", "jit", "ffi"];
+        if namespace.is_empty() {
+            // all global classes are treated as, well, globals
+            if name == "global" {
+                Scope::Global
+            } else if LUA_STD_LIBS.contains(&name) {
+                Scope::Modules
+            } else {
+                Scope::Local
+            }
         } else {
-            Scope::Local
+            // only classes that belong to the root namespace are treated as global classes
+            if Class::belongs_to_namespace(name, namespace) {
+                Scope::Global
+            } else if LUA_STD_LIBS.contains(&name) || name == "global" {
+                Scope::Modules
+            } else {
+                Scope::Local
+            }
         }
     }
 
-    pub fn path_prefix(&self) -> String {
+    pub fn path_prefix(&self, namespace: &str) -> String {
         match self {
-            Scope::Global | Scope::Local => String::from("API/"),
-            Scope::Builtins => String::from("API/builtins/"),
-            Scope::Modules => String::from("API/modules/"),
+            Scope::Global | Scope::Local => {
+                if namespace.is_empty() {
+                    "API/".to_string()
+                } else {
+                    format!("API/{}/", namespace)
+                }
+            }
+            Scope::Builtins => "API/builtins/".to_string(),
+            Scope::Modules => "API/modules/".to_string(),
         }
     }
 }
@@ -279,12 +298,75 @@ pub struct Class {
 }
 
 impl Class {
-    pub fn get_base(s: &str) -> Option<&str> {
-        s.rfind('.').map(|pos| &s[..pos])
+    pub fn belongs_to_namespace(name: &str, namespace: &str) -> bool {
+        if !namespace.is_empty() {
+            name == namespace || name.starts_with(&(namespace.to_string() + "."))
+        } else {
+            false
+        }
     }
 
-    pub fn get_end(s: &str) -> Option<&str> {
-        s.rfind('.').map(|pos| &s[pos + 1..])
+    pub fn get_base(name: &str) -> Option<&str> {
+        name.rfind('.').map(|pos| &name[..pos])
+    }
+
+    pub fn get_end(name: &str) -> Option<&str> {
+        name.rfind('.').map(|pos| &name[pos + 1..])
+    }
+
+    pub fn collect_local_types(
+        &self,
+        structs: &HashMap<String, Class>,
+        aliases: &HashMap<String, Alias>,
+    ) -> (HashSet<String>, HashSet<String>) {
+        let mut local_class_names = self.collect_local_class_types();
+        let mut local_alias_names = self.collect_alias_types();
+
+        // loop until recursion settled
+        loop {
+            let mut new_local_class_names = local_class_names.clone();
+            let mut new_local_alias_names = local_alias_names.clone();
+
+            // find local structs and aliases names in aliases
+            for name in new_local_alias_names.clone() {
+                let alias = aliases.get(&name).unwrap();
+                new_local_class_names.extend(alias.kind.collect_local_class_types());
+                new_local_alias_names.extend(alias.kind.collect_alias_types());
+            }
+
+            // find alias and local struct names in local structs
+            for name in new_local_class_names.clone() {
+                let struct_ = structs.get(&name).unwrap();
+                new_local_alias_names.extend(struct_.collect_alias_types());
+                new_local_class_names.extend(struct_.collect_local_class_types());
+            }
+
+            // resolve new structs and aliases
+            for alias in new_local_alias_names.clone().into_iter() {
+                if let Some(alias) = aliases.get(&alias) {
+                    if let Kind::Alias(alias) = &alias.kind {
+                        new_local_alias_names.insert(alias.name.clone());
+                    } else if let Kind::Class(class) = &alias.kind {
+                        if class.scope == Scope::Local {
+                            new_local_class_names.insert(class.name.to_string());
+                        }
+                        new_local_alias_names.extend(class.collect_alias_types());
+                        new_local_class_names.extend(class.collect_local_class_types());
+                    }
+                }
+            }
+
+            if new_local_class_names != local_class_names
+                || new_local_alias_names != local_alias_names
+            {
+                local_class_names.clone_from(&new_local_class_names);
+                local_alias_names.clone_from(&new_local_alias_names);
+            } else {
+                break;
+            }
+        }
+
+        (local_class_names, local_alias_names)
     }
 
     pub fn collect_local_aliases(&self, aliases: &HashMap<String, Alias>) -> HashSet<String> {
@@ -319,7 +401,6 @@ impl Class {
         local_alias_names
     }
 
-    #[allow(unused)]
     pub fn collect_local_class_types(&self) -> HashSet<String> {
         let mut types = HashSet::new();
         for field in &self.fields {
