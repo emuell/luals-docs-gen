@@ -4,7 +4,7 @@ use std::{
     path::Path,
 };
 
-use crate::error::Error;
+use crate::{error::Error, generator::options::Options, parser::types::Class};
 
 // -------------------------------------------------------------------------------------------------
 
@@ -16,12 +16,13 @@ pub(crate) struct TocEntry {
 }
 
 impl TocEntry {
-    pub fn from(name: &str) -> Self {
+    pub fn from(name: &str, options: &Options) -> Self {
         let mut file_name = name.to_string();
         let mut display_name = name.to_string();
         let mut file_path = String::new();
         let mut level = String::from("  ");
         if name.contains('/') {
+            // reconstruct relative paths in TOC
             let full_name = file_name.clone();
             let mut splits = full_name.split('/').collect::<Vec<_>>();
             level = "  ".repeat(splits.len());
@@ -33,7 +34,18 @@ impl TocEntry {
                 .collect::<Vec<_>>()
                 .join("/");
             file_path.push('/');
+        } else if Class::belongs_to_namespace(name, &options.namespace) {
+            if name == options.namespace {
+                // namespace root
+                display_name = name.to_string();
+            } else {
+                // members of namespace
+                display_name = name.replace(&(options.namespace.clone() + "."), "");
+                file_path = options.namespace.clone() + "/";
+                level = "  ".repeat(2);
+            }
         } else {
+            // everything else...
             display_name = match name {
                 "builtins" => "Builtin Types".to_string(),
                 "modules" => "Module Extensions".to_string(),
@@ -45,8 +57,7 @@ impl TocEntry {
         let link = format!(
             "{}- [{}](API/{}{}.md)",
             level, display_name, file_path, file_name
-        )
-        .to_string();
+        );
         Self {
             file_path,
             file_name,

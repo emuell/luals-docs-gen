@@ -1,7 +1,10 @@
 use std::{collections::HashMap, path::Path};
 
+use itertools::Itertools;
+
 use crate::{
     error::Error,
+    generator::options::{Options, OutputOrder},
     parser::{json::JsonDoc, types::*},
 };
 
@@ -15,18 +18,18 @@ pub struct Library {
 }
 
 impl Library {
-    /// generate a library from a given root directory or lua file
-    pub fn from_path(path: &Path) -> Result<Self, Error> {
+    /// generate a library from a given root directory or lua file with the given options
+    pub fn from_path(path: &Path, options: &Options) -> Result<Self, Error> {
         println!("Parsing definitions: '{}'", path.to_string_lossy());
         let mut defs: Vec<Def> = vec![];
         let definitions = JsonDoc::get(path)?;
         defs.append(
             &mut definitions
                 .iter()
-                .filter_map(Def::from_definition)
+                .filter_map(|d| Def::from_definition(d, &options.namespace))
                 .collect::<Vec<Def>>(),
         );
-        Ok(Self::from_defs(defs))
+        Ok(Self::from_defs(defs, options))
     }
 
     // a list of classes that correspond to lua types
@@ -150,8 +153,8 @@ impl Library {
         }
     }
 
-    // generate Library from a list of Defs
-    fn from_defs(defs: Vec<Def>) -> Self {
+    // generate Library from a list of Defs, applying the given options.
+    fn from_defs(defs: Vec<Def>, options: &Options) -> Self {
         // sort defs into hasmaps of classes, enums and aliases
         let mut classes = HashMap::new();
         let mut enums = HashMap::new();
@@ -172,16 +175,14 @@ impl Library {
             }
         }
 
-        // HACK: manually remove a few classes
-        classes.retain(|name, _| !["TimeContext", "TriggerContext"].contains(&name.as_str()));
-
+        // collect library contents
         let mut library = Self {
             classes,
             enums,
             aliases,
         };
 
-        // transform any unresolved Kind to the appropriate classe or alias
+        // transform any unresolved Kind to the appropriate class or alias
         // by cross referencing the hashmaps of the library
         library.resolve_classes();
         let mut aliases = library.aliases.clone();
@@ -203,117 +204,152 @@ impl Library {
             }
         }
 
-        // add globl functions to new or existing classes
+        // add global functions to new or existing classes
         for f in dangling_functions.iter_mut() {
-            let name = &f.name.clone().unwrap_or_default();
-            let base = Class::get_base(name).unwrap_or("global");
-            let mut class_name = base.to_string();
-            if class_name == "global" {
-                if let Some(file) = &f.file {
-                    let file_stem = file.file_stem().map(|f| f.to_string_lossy());
-                    class_name = format!("{} globals", file_stem.unwrap()).to_string();
+            let function_name = f.name.clone().unwrap_or_default();
+            let class_name = Class::get_base(&function_name)
+                .unwrap_or("global")
+                .to_string();
+            let mut target_class_name = class_name.clone();
+            let mut added_to_existing_class = false;
+            match options.order {
+                OutputOrder::ByFile => {
+                    if target_class_name == "global" {
+                        if let Some(file) = &f.file {
+                            let file_stem = file.file_stem().map(|f| f.to_string_lossy());
+                            target_class_name =
+                                format!("{} globals", file_stem.unwrap()).to_string();
+                        }
+                    }
+                    // move globals into a separate "globals" file
+                    if let Some((_, class)) = library
+                        .classes
+                        .iter_mut()
+                        .find(|(name, c)| *name == &target_class_name && c.file == f.file)
+                    {
+                        let f = f.strip_base();
+                        if !class.functions.iter().any(|f2| f2.name == f.name) {
+                            class.functions.push(f)
+                        }
+                        added_to_existing_class = true;
+                    }
+                }
+                OutputOrder::ByClass => {
+                    // move globals into the source file
+                    if let Some((_, class)) = library
+                        .classes
+                        .iter_mut()
+                        .find(|(name, _c)| *name == &class_name)
+                    {
+                        let f = f.strip_base();
+                        if !class.functions.iter().any(|f2| f2.name == f.name) {
+                            class.functions.push(f)
+                        }
+                        added_to_existing_class = true;
+                    }
                 }
             }
-            if let Some((_, class)) = library
-                .classes
-                .iter_mut()
-                // NB eq_ignore_ascii_case to ignore classes which are defined via a table with the same name
-                // e.g. pattern {} and class Pattern
-                .find(|(name, c)| name.eq_ignore_ascii_case(&class_name) && c.file == f.file)
-            {
-                let f = f.strip_base();
-                if !class.functions.iter().any(|f2| f2.name == f.name) {
-                    class.functions.push(f)
-                }
-            } else {
+            if !added_to_existing_class {
                 library.classes.insert(
-                    class_name,
+                    target_class_name,
                     Class {
                         file: f.file.clone(),
                         line_number: f.line_number,
-                        scope: Scope::from_name(base),
-                        name: base.to_string(),
+                        scope: Scope::from_name(&class_name, &options.namespace),
+                        name: class_name,
                         functions: vec![f.strip_base()],
                         fields: vec![],
                         enums: vec![],
                         constants: vec![],
-                        // TODO the description should end up here from bit, os etc
                         desc: String::new(),
                     },
                 );
             }
         }
 
+        // apply class excludes
+        library
+            .classes
+            .retain(|name, _| !options.excluded_classes.contains(name));
+
         // extract constants, make functions, fields and constants unique and sort them
-        for (_, c) in library.classes.iter_mut() {
-            let mut functions = c.functions.clone();
-            functions.sort_by(|a, b| {
-                a.line_number
-                    .unwrap_or_default()
-                    .cmp(&b.line_number.unwrap_or_default())
-            });
+        for class in library.classes.values_mut() {
+            let mut functions = class
+                .functions
+                .clone()
+                .into_iter()
+                .unique_by(|f| f.to_string())
+                .collect::<Vec<_>>();
+            functions.sort_by_key(|f| (f.file.clone(), f.line_number));
 
-            let mut enums = c.enums.clone();
-            enums.sort_by(|a, b| {
-                a.line_number
-                    .unwrap_or_default()
-                    .cmp(&b.line_number.unwrap_or_default())
-            });
+            let mut enums = class
+                .enums
+                .clone()
+                .into_iter()
+                .unique_by(|e| e.name.clone())
+                .collect::<Vec<_>>();
+            enums.sort_by_key(|e| (e.file.clone(), e.line_number));
 
-            let mut fields = c
+            let mut fields = class
                 .fields
                 .clone()
                 .into_iter()
                 .filter(Var::is_not_constant)
+                // HACK: remove table properties from classes, assuming they are nested classes
+                .filter(|v| !matches!(v.kind, Kind::Lua(LuaKind::Table)))
+                .unique_by(|f| f.name.clone())
                 .collect::<Vec<_>>();
-            fields.sort_by(|a, b| {
-                a.line_number
-                    .unwrap_or_default()
-                    .cmp(&b.line_number.unwrap_or_default())
-            });
+            fields.sort_by_key(|f| (f.file.clone(), f.line_number));
 
-            let mut constants = c
+            let mut constants = class
                 .fields
                 .clone()
                 .into_iter()
                 .filter(Var::is_constant)
+                .unique_by(|f| f.name.clone())
                 .collect::<Vec<_>>();
-            constants.sort_by(|a, b| a.name.cmp(&b.name));
+            constants.sort_by_key(|c| (c.file.clone(), c.line_number));
 
-            c.functions = functions;
-            c.fields = fields;
-            c.enums = enums;
-            c.constants = constants;
+            class.functions = functions;
+            class.fields = fields;
+            class.enums = enums;
+            class.constants = constants;
         }
 
         // debug print everything that includes some unresolved Kind or is empty
-        println!("classes:");
-        for c in library.classes.values() {
-            let is_empty = library.classes.get(&c.name).is_some_and(|v| v.is_empty());
-            let unresolved = c.has_unresolved();
+        if !library.classes.is_empty() {
+            println!("classes:");
+            for class in library.classes.values() {
+                let is_empty = library
+                    .classes
+                    .get(&class.name)
+                    .is_some_and(|v| v.is_empty());
+                let unresolved = class.has_unresolved();
 
-            if is_empty || unresolved {
-                println!("  {}", c.name);
-            }
-            if unresolved {
-                println!("{}\n", c.show());
-            }
-            if is_empty {
-                println!("  \x1b[33m^--- has no fields, methods or enums\x1b[0m")
+                if is_empty || unresolved {
+                    println!("  {}", class.name);
+                }
+                if unresolved {
+                    println!("{}\n", class.show());
+                }
+                if is_empty {
+                    println!("  \x1b[33m^--- has no fields, methods or enums\x1b[0m")
+                }
             }
         }
-        println!("aliases:");
-        for a in library.aliases.values() {
-            if a.kind.has_unresolved() {
-                println!("  {}", a.name);
-                println!("\n{}\n", a.show());
+        if library
+            .aliases
+            .iter()
+            .any(|(__, a)| a.kind.has_unresolved())
+        {
+            println!("aliases:");
+            for alias in library.aliases.values() {
+                if alias.kind.has_unresolved() {
+                    println!("  {}", alias.name);
+                    println!("\n{}\n", alias.show());
+                }
             }
         }
-        // println!("enums");
-        // for e in l.enums.values() {
-        //     println!("  {}", e.name);
-        // }
-
         library
     }
 }
