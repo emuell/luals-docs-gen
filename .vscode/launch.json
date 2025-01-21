@@ -17,8 +17,10 @@
                 }
             },
             "args": [
+                "--order=by-class",
+                "--namespace=acme",
                 "./test/definitions",
-                "./test/out"
+                "./test/src"
             ],
             "cwd": "${workspaceFolder}"
         },
