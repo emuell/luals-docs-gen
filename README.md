@@ -45,6 +45,9 @@ fn main() -> Result<(), Error> {
     let options = Options {
         library: "../../some/path_to/definitions".into(),
         output: "../some/path_to/out".into(),
+        excluded_classes: vec!["HideThisClass".to_string()],
+        order: OutputOrder::ByClass,
+        namespace: "acme".into(),
     };
     generate_docs(&options)
 }
