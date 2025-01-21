@@ -1,7 +1,7 @@
-<img src="https://www.renoise.com/sites/default/files/renoise_logo_0.png" alt="Renoise" height="100"/>
+- [Welcome](README.md)
 <!-- API TOC START -->
   - [acme](API/acme.md)
-  - [some_class](API/some_class.md)
+    - [SomeClass](API/acme/acme.SomeClass.md)
   - [Module Extensions](API/modules.md)
     - [table](API/modules/table.md)
   - [Builtin Types](API/builtins.md)
