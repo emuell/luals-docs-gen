@@ -474,6 +474,7 @@ where
                 // there is only one possible extends per define in the API
                 ExtendInput::Array(vec) => vec.first().cloned(),
                 ExtendInput::Object(extend) => Some(extend),
+                #[allow(unused_variables)]
                 ExtendInput::Other(value) => {
                     #[cfg(debug_assertions)]
                     panic!("Unexpected extend {:?}", value);
