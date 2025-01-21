@@ -20,8 +20,8 @@ To create or update API definitions, simply build and run the application.
 # List all options
 cargo run -- --help
 
-# Build or update the example, test API in this crate
-cargo run -- ./test/definitions ./test/out
+# Build and update the example mdbook in this crate
+cargo run -- ./test/definitions ./test/src
 ```
 
 ### Library
