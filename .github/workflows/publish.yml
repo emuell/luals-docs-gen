@@ -1,0 +1,49 @@
+name: Publish
+
+on:
+  # run when a new semantic version tag got pushed (a release)
+  push:
+    tags:
+      - 'v*.*.*'
+  # allow to run the workflow manually from the actions tab
+  workflow_dispatch:
+
+jobs:
+  publish:
+    name: Publish ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        name: [
+            linux,
+            windows,
+            macos
+        ]
+        include:
+          - name: linux
+            os: ubuntu-20.04
+            artifact_name: target/release/luals_docs_gen
+            asset_name: luals_docs_gen-linux_x86_64
+          - name: windows
+            os: windows-2022
+            artifact_name: target/release/luals_docs_gen.exe
+            asset_name: luals_docs_gen-windows_x86_64
+          - name: macos
+            os: macos-13
+            artifact_name: target/release/luals_docs_gen
+            asset_name: luals_docs_gen-macos_aarch64
+
+    steps:
+    - uses: actions/checkout@v1
+
+    - name: Install Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+
+    - name: Build
+      run: cargo build --release --locked
+
+    - name: Upload binaries
+      uses: actions/upload-artifact@v2
+      with:
+        name: ${{ matrix.asset_name }}
+        path: ${{ matrix.artifact_name }}
