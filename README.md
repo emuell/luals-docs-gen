@@ -35,7 +35,7 @@ luals-docs-gen = { git = "https://github.com/emuell/luals-docs-gen" }
 
 In your rust app:
 
-```rust
+```rust no_run
 use luals_docs_gen::*;
 
 fn main() -> Result<(), Error> {
