@@ -3,7 +3,13 @@
 <!-- toc -->
   
 ## Constants
-
+### StatusCode<a name="StatusCode"></a>
+> ```lua
+> {
+>     OK: integer = 0,
+>     ERROR: integer = 1,
+> }
+> ```
 ### SOME_CONSTANT : [`integer`](../../API/builtins/integer.md)<a name="SOME_CONSTANT"></a>
 > SOME_CONSTANT docs
   
@@ -17,5 +23,9 @@
 ---  
 ## Functions
 ### some_function([*self*](../../API/builtins/self.md))<a name="some_function"></a>
-> This function does something.  
+> This function does something.
+### function_with_enum_return([*self*](../../API/builtins/self.md))<a name="function_with_enum_return"></a>
+`->`[`acme.SomeClass.StatusCode`](acme.SomeClass.md#StatusCode)  
+
+> This function also does something and returns a status code enum.  
 

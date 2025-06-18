@@ -231,6 +231,17 @@ pub struct Enum {
     pub desc: String,
 }
 
+impl Enum {
+    pub fn strip_base(&self) -> Self {
+        Self {
+            name: Class::get_end(&self.name)
+                .map(|n| n.to_string())
+                .unwrap_or(self.name.clone()),
+            ..self.clone()
+        }
+    }
+}
+
 // -------------------------------------------------------------------------------------------------
 
 /// scope of a class item

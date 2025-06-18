@@ -194,17 +194,67 @@ impl Library {
             .iter_mut()
             .for_each(|f| library.resolve_function(f));
 
-        // assign enums to their respective classes
+        // assign enums to new or existing classes
         for (k, e) in library.enums.iter() {
-            let base = Class::get_base(k);
-            if let Some(base) = base {
-                if let Some(class) = library.classes.get_mut(base) {
-                    class.enums.push(e.clone())
+            let base = Class::get_base(k).unwrap_or("global").to_string();
+            if let Some(class) = library.classes.get_mut(&base) {
+                class.enums.push(e.clone())
+            } else {
+                let mut target_class_name = base.clone();
+                let mut added_to_existing_class = false;
+                match options.order {
+                    OutputOrder::ByFile => {
+                        if let Some(file) = &e.file {
+                            let file_stem = file.file_stem().map(|f| f.to_string_lossy());
+                            target_class_name =
+                                format!("{} globals", file_stem.unwrap()).to_string();
+                        }
+                        // move globals into a separate "globals" file
+                        if let Some((_, class)) = library
+                            .classes
+                            .iter_mut()
+                            .find(|(name, c)| *name == &target_class_name && c.file == e.file)
+                        {
+                            let f = e.strip_base();
+                            if !class.enums.iter().any(|f2| f2.name == f.name) {
+                                class.enums.push(e.clone())
+                            }
+                            added_to_existing_class = true;
+                        }
+                    }
+                    OutputOrder::ByClass => {
+                        // move globals into the source file
+                        if let Some((_, class)) =
+                            library.classes.iter_mut().find(|(name, _c)| *name == &base)
+                        {
+                            let e = e.strip_base();
+                            if !class.enums.iter().any(|e2| e2.name == e.name) {
+                                class.enums.push(e)
+                            }
+                            added_to_existing_class = true;
+                        }
+                    }
+                }
+                if !added_to_existing_class {
+                    library.classes.insert(
+                        target_class_name,
+                        Class {
+                            file: e.file.clone(),
+                            line_number: e.line_number,
+                            scope: Scope::from_name(&base, &options.namespace),
+                            name: base,
+                            functions: vec![],
+                            fields: vec![],
+                            enums: vec![e.strip_base()],
+                            constants: vec![],
+                            desc: String::new(),
+                        },
+                    );
                 }
             }
         }
 
-        // add global functions to new or existing classes
+        // assign global functions to new or existing classes
         for f in dangling_functions.iter_mut() {
             let function_name = f.name.clone().unwrap_or_default();
             let class_name = Class::get_base(&function_name)
