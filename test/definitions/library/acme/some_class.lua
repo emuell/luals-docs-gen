@@ -6,6 +6,7 @@
 ---@class acme.SomeClass
 ---@field some_field boolean
 acme.SomeClass = {}
+acme.SomeClass.__index = acme.SomeClass
 
 ---### constants
 

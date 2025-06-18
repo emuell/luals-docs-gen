@@ -59,6 +59,7 @@ impl JsonDoc {
             ))
         } else {
             let json_doc_path = tmp_dir.path().join("doc.json");
+            // println!("{}", json_doc_path.display());
             let json_doc = fs::read_to_string(json_doc_path)?;
             Ok(serde_json::from_str(&json_doc)?)
         }
@@ -244,6 +245,7 @@ pub enum Doc {
 pub enum Type {
     Doc(Doc),
     // fields, defines
+    GetLocal,
     GetField,
     SetField,
     SetMethod,
@@ -271,11 +273,12 @@ impl<'de> Deserialize<'de> for Type {
         let s: &str = Deserialize::deserialize(deserializer)?;
         match s {
             "type" => Ok(Type::Def),
-            "variable" => Ok(Type::Variable),
+            "getlocal" => Ok(Type::GetLocal),
             "getfield" => Ok(Type::GetField),
             "setfield" => Ok(Type::SetField),
             "setmethod" => Ok(Type::SetMethod),
             "setglobal" => Ok(Type::SetGlobal),
+            "variable" => Ok(Type::Variable),
             "tablefield" => Ok(Type::TableField),
             "function.return" => Ok(Type::FunctionReturn),
             "luals.config" => Ok(Type::LuaLsConfig),

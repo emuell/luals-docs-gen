@@ -99,6 +99,8 @@ impl From<Extend> for Kind {
             } else {
                 Self::from_string(&e.view)
             }
+        } else if e.lua_type == Type::GetLocal || e.lua_type == Type::GetField {
+            Self::from_string(&e.view)
         } else {
             Self::from(e.lua_type)
         }
