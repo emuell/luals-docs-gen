@@ -21,7 +21,7 @@ jobs:
         ]
         include:
           - name: linux
-            os: ubuntu-20.04
+            os: ubuntu-22.04
             artifact_name: target/release/luals_docs_gen
             asset_name: luals_docs_gen-linux_x86_64
           - name: windows
