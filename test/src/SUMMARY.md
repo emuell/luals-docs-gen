@@ -2,6 +2,7 @@
 <!-- API TOC START -->
   - [acme](API/acme.md)
     - [SomeClass](API/acme/acme.SomeClass.md)
+    - [SomeOtherClass](API/acme/acme.SomeOtherClass.md)
   - [Module Extensions](API/modules.md)
     - [table](API/modules/table.md)
   - [Builtin Types](API/builtins.md)

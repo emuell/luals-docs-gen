@@ -4,6 +4,7 @@ use std::{
 };
 
 use itertools::Itertools;
+use regex::Regex;
 
 use crate::{
     generator::{
@@ -215,10 +216,20 @@ fn quote(text: &str) -> String {
 }
 
 fn description(desc: &str) -> String {
-    quote(
-        desc.replace("### examples", "#### examples")
-            .trim_matches('\n'),
-    )
+    if desc.is_empty() {
+        String::new()
+    } else {
+        // remove file markdown file links from @see annotations
+        let file_link_re = Regex::new(r"\[([^\]]+)\]\(file://[^\)]*\)").unwrap();
+        // TODO: such links could in theory be resolved and rewritten as internal links while
+        // generating the library...
+        let desc = file_link_re.replace_all(desc, "`$1`");
+        // add one more h level for examples
+        let desc = desc.replace("### examples", "#### examples");
+        // remove leading and trailing newlines
+        let desc = desc.trim_matches('\n');
+        quote(desc)
+    }
 }
 
 fn hash(text: &str, hash: &str) -> String {
