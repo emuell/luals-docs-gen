@@ -2,7 +2,7 @@
 
 This is a rust appplication and library that generates generate markdown docs from [Lua LS](https://github.com/LuaLS/lua-language-server) type annotated API definitions. The generated markdown and folder structure is tuned to be consumed by a [mdbook](https://github.com/rust-lang/mdBook).
 
-This crate was created and is used to automatically generate Lua API docs in the [Renoise](https://renoise.github.io/xrnx/) and [afseq](https://emuell.github.io/afseq/) Lua APIs.
+This crate was created and is used to automatically generate Lua API docs in the [Renoise](https://renoise.github.io/xrnx/API/index.html) and [pattrns](https://renoise.github.io/pattrns/API/index.html) Lua APIs.
 
 ## Acknowledgements
 
