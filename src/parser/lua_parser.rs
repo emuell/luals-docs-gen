@@ -205,7 +205,11 @@ impl LuaParser {
             Rule::generic => {
                 let mut inner = pair.into_inner();
                 let name = inner.next().unwrap();
-                Kind::Generic(name.to_string())
+                let parent_type = inner.next();
+                Kind::Generic(
+                    name.to_string(),
+                    parent_type.map(|k| Box::new(Self::kind(k))),
+                )
             }
             _ => {
                 println!("{:?}", pair.as_rule());
@@ -290,7 +294,24 @@ mod test {
                 file: None,
                 line_number: None,
                 name: None,
-                params: vec![var("a".to_string(), Kind::Generic(String::from("T")))],
+                params: vec![var("a".to_string(), Kind::Generic(String::from("T"), None))],
+                returns: vec![],
+                desc: None,
+            }),
+        )?;
+        assert_type(
+            "fun(a: <T:integer>)",
+            Kind::Function(Function {
+                file: None,
+                line_number: None,
+                name: None,
+                params: vec![var(
+                    "a".to_string(),
+                    Kind::Generic(
+                        String::from("T"),
+                        Some(Box::new(Kind::Lua(LuaKind::Integer))),
+                    ),
+                )],
                 returns: vec![],
                 desc: None,
             }),

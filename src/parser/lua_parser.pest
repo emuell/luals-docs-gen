@@ -25,7 +25,7 @@ table_type = { "table" ~ "<" ~ _enum_or_complex ~ ", " ~ _enum_or_complex ~ ">"}
 array_tail = {"[]"}
 nullable_tail = {"?"}
 
-generic = ${"<" ~ valid_name ~ ">"}
+generic = ${"<" ~ valid_name ~ (":" ~ _enum_or_complex)? ~ ">"}
 
 _types = _{ fun | function | method | table_type | object | _grouped | _simple | generic }
 
