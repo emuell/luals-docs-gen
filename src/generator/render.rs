@@ -350,6 +350,13 @@ impl Kind {
             }
             Kind::Variadic(k) => format!("...{}", k.link(url_root, file, options)),
             Kind::Unresolved(s) => s.clone(),
+            Kind::Generic(s, parent_type) => {
+                if let Some(parent_type) = parent_type {
+                    format!("<{}:{}>", s, parent_type.link(url_root, file, options))
+                } else {
+                    format!("<{}>", s)
+                }
+            }
         }
     }
 }
