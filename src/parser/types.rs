@@ -46,6 +46,7 @@ pub enum Kind {
     SelfArg,
     Variadic(Box<Kind>),
     Literal(Box<LuaKind>, String),
+    Generic(String),
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -108,6 +109,7 @@ impl Kind {
                 types.extend(item.collect_local_class_types());
             }
             Kind::Literal(_lua_kind, _) => {}
+            Kind::Generic(_) => {}
         }
         types
     }
@@ -157,6 +159,7 @@ impl Kind {
                 types.extend(item.collect_alias_types());
             }
             Kind::Literal(_lua_kind, _) => {}
+            Kind::Generic(_) => {}
         }
         types
     }

@@ -350,6 +350,7 @@ impl Kind {
             }
             Kind::Variadic(k) => format!("...{}", k.link(url_root, file, options)),
             Kind::Unresolved(s) => s.clone(),
+            Kind::Generic(s) => s.clone(),
         }
     }
 }

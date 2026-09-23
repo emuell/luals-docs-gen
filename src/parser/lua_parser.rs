@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use pest::{iterators::Pair, Parser};
+use pest::{Parser, iterators::Pair};
 use pest_derive::Parser;
 
 use crate::parser::types::{Function, Kind, LuaKind, Var};
@@ -202,6 +202,11 @@ impl LuaParser {
                     desc: None,
                 })
             }
+            Rule::generic => {
+                let mut inner = pair.into_inner();
+                let name = inner.next().unwrap();
+                Kind::Generic(name.to_string())
+            }
             _ => {
                 println!("{:?}", pair.as_rule());
                 unreachable!()
@@ -265,6 +270,30 @@ mod test {
         assert_type(
             "integer[][]",
             Kind::Array(Box::new(Kind::Array(Box::new(Kind::Lua(LuaKind::Integer))))),
+        )?;
+        assert_type(
+            "table<integer|string, string|boolean>",
+            Kind::Table(
+                Box::new(Kind::Enum(vec![
+                    Kind::Lua(LuaKind::Integer),
+                    Kind::Lua(LuaKind::String),
+                ])),
+                Box::new(Kind::Enum(vec![
+                    Kind::Lua(LuaKind::String),
+                    Kind::Lua(LuaKind::Boolean),
+                ])),
+            ),
+        )?;
+        assert_type(
+            "fun(a: <T>)",
+            Kind::Function(Function {
+                file: None,
+                line_number: None,
+                name: None,
+                params: vec![var("a".to_string(), Kind::Generic(String::from("T")))],
+                returns: vec![],
+                desc: None,
+            }),
         )?;
         assert_type(
             "function a.b.c(i: integer, ...string)",
