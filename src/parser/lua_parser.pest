@@ -20,7 +20,7 @@ field  = ${ _key ~ W ~ ":" ~ W ~ _enum_or_complex }
 
 object = ${"{" ~ W ~ field ~ W ~ (","  ~ W ~ field )* ~ W ~ "}"}
 
-table_type = { "table" ~ "<" ~ complex_type ~ ", " ~ _enum_or_complex ~ ">"}
+table_type = { "table" ~ "<" ~ _enum_or_complex ~ ", " ~ _enum_or_complex ~ ">"}
 
 array_tail = {"[]"}
 nullable_tail = {"?"}
