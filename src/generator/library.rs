@@ -38,33 +38,55 @@ impl Library {
         vec![
             Self::builtin_class_desc(
                 "self",
-                &format!("A type that represents an instance that you call a function on. When you see a function signature starting with this type, you should use `:` to call the function on the instance, this way you can omit this first argument.\n{}", self_example),
+                &format!(
+                    "A type that represents an instance that you call a function on. When you see a function signature starting with this type, you should use `:` to call the function on the instance, this way you can omit this first argument.\n{}",
+                    self_example
+                ),
             ),
             Self::builtin_class_desc(
                 "nil",
                 "A built-in type representing a non-existant value, [see details](https://www.lua.org/pil/2.1.html). When you see `?` at the end of types, it means they can be nil.",
             ),
             Self::builtin_class_desc(
+                "generic",
+                "A generic parameter [see details](https://luals.github.io/wiki/annotations/#generic).",
+            ),
+            Self::builtin_class_desc(
                 "boolean",
-                "A built-in type representing a boolean (true or false) value, [see details](https://www.lua.org/pil/2.2.html)",
+                "A built-in type representing a boolean (true or false) value, [see details](https://www.lua.org/pil/2.2.html).",
             ),
             Self::builtin_class_desc(
                 "number",
-                "A built-in type representing floating point numbers, [see details](https://www.lua.org/pil/2.3.html)",
+                "A built-in type representing floating point numbers, [see details](https://www.lua.org/pil/2.3.html).",
             ),
             Self::builtin_class_desc(
                 "string",
-                "A built-in type representing a string of characters, [see details](https://www.lua.org/pil/2.4.html)",
+                "A built-in type representing a string of characters, [see details](https://www.lua.org/pil/2.4.html).",
             ),
-            Self::builtin_class_desc("function", "A built-in type representing functions, [see details](https://www.lua.org/pil/2.6.html)"),
-            Self::builtin_class_desc("table", "A built-in type representing associative arrays, [see details](https://www.lua.org/pil/2.5.html)"),
-            Self::builtin_class_desc("userdata", "A built-in type representing array values, [see details](https://www.lua.org/pil/28.1.html)."),
+            Self::builtin_class_desc(
+                "function",
+                "A built-in type representing functions, [see details](https://www.lua.org/pil/2.6.html).",
+            ),
+            Self::builtin_class_desc(
+                "table",
+                "A built-in type representing associative arrays, [see details](https://www.lua.org/pil/2.5.html).",
+            ),
+            Self::builtin_class_desc(
+                "array",
+                "A built-in type representing indexed arrays, where indexing starts at 1, [see details](https://www.lua.org/pil/2.5.html).",
+            ),
+            Self::builtin_class_desc(
+                "userdata",
+                "A built-in type representing array values, [see details](https://www.lua.org/pil/28.1.html).",
+            ),
             Self::builtin_class_desc(
                 "lightuserdata",
-                "A built-in type representing a pointer, [see details](https://www.lua.org/pil/28.5.html)",
+                "A built-in type representing a pointer, [see details](https://www.lua.org/pil/28.5.html).",
             ),
-
-            Self::builtin_class_desc("integer", "A helper type that represents whole numbers, a subset of [number](number.md)"),
+            Self::builtin_class_desc(
+                "integer",
+                "A helper type that represents whole numbers, a subset of [number](number.md).",
+            ),
             Self::builtin_class_desc(
                 "any",
                 "A type for a dynamic argument, it can be anything at run-time.",
@@ -128,7 +150,7 @@ impl Library {
 
     fn resolve_classes(&mut self) {
         let l = self.clone();
-        for (_, c) in self.classes.iter_mut() {
+        for c in self.classes.values_mut() {
             for f in c.fields.iter_mut() {
                 f.kind = l.resolve_kind(&f.kind)
             }
