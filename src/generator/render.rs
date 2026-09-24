@@ -39,11 +39,10 @@ impl Library {
 
                     let mut content = String::new();
                     content.push_str(&h1(&file_stem));
-                    content.push_str("\n<!-- toc -->\n");
 
                     for class in Self::sort_classes(classes) {
                         let url_root = "../";
-                        let render_toc = false; // we already added a toc here
+                        let render_toc = true;
                         content.push_str(&class.render(
                             url_root,
                             render_toc,
@@ -145,13 +144,7 @@ impl Library {
     }
 
     fn sort_classes(mut classes: Vec<Class>) -> Vec<Class> {
-        let custom_weight = |name: &str| -> usize {
-            if name == "global" {
-                0
-            } else {
-                1
-            }
-        };
+        let custom_weight = |name: &str| -> usize { if name == "global" { 0 } else { 1 } };
         classes.sort_by_key(|class| (custom_weight(&class.name), class.name.to_lowercase()));
         classes
     }
@@ -211,6 +204,26 @@ fn alias_link(text: &str, hash: &str) -> String {
     format!("[`{}`](#{})", text, hash)
 }
 
+fn plain_link(text: &str, lowercase: bool) -> String {
+    format!(
+        "[{}](#{})",
+        text,
+        if lowercase {
+            text.to_lowercase()
+        } else {
+            text.to_string()
+        }
+    )
+}
+
+fn section_link(section: &str) -> String {
+    plain_link(section, true)
+}
+
+fn header_link(header: &str) -> String {
+    plain_link(header, false)
+}
+
 fn quote(text: &str) -> String {
     format!("> {}", text.replace('\n', "\n> "))
 }
@@ -233,7 +246,11 @@ fn description(desc: &str) -> String {
 }
 
 fn hash(text: &str, hash: &str) -> String {
-    format!("{}<a name=\"{}\"></a>", text, hash)
+    format!("{} {{ #{} }}", text, hash)
+}
+
+fn divider() -> String {
+    String::from("---")
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -319,21 +336,28 @@ impl Kind {
                 ),
             },
             Kind::SelfArg => format!("[*self*]({}API/builtins/self.md)", url_root),
-            Kind::Array(k) => format!("{}[]", k.link(url_root, file, options)),
+            Kind::Array(k) => format!(
+                "{}{}",
+                k.link(url_root, file, options),
+                file_link("[]", &format!("{}API/builtins/array", url_root))
+            ),
             Kind::Nullable(k) => format!(
                 "{}{}",
                 k.as_ref().link(url_root, file, options),
                 file_link("?", &format!("{}API/builtins/nil", url_root))
             ),
             Kind::Alias(alias) => alias_link(&alias.name, &alias.name),
-            Kind::Function(f) => f.short(url_root, file, options),
+            Kind::Function(f) => {
+                f.short(url_root, file, options, NameFormat::Omit, NameFormat::Plain)
+            }
             Kind::Table(k, v) => format!(
-                "table<{}, {}>",
+                "{}`<`{}, {}`>`",
+                file_link("table", &format!("{}API/builtins/table", url_root)),
                 k.as_ref().link(url_root, file, options),
                 v.as_ref().link(url_root, file, options)
             ),
             Kind::Object(hm) => {
-                let mut keys = hm.iter().map(|(k, _)| k.clone()).collect::<Vec<String>>();
+                let mut keys = hm.keys().cloned().collect::<Vec<String>>();
                 keys.sort();
                 let fields = keys
                     .iter()
@@ -351,10 +375,15 @@ impl Kind {
             Kind::Variadic(k) => format!("...{}", k.link(url_root, file, options)),
             Kind::Unresolved(s) => s.clone(),
             Kind::Generic(s, parent_type) => {
+                let generic_link = file_link(s, &format!("{}/API/builtins/generic", url_root));
                 if let Some(parent_type) = parent_type {
-                    format!("<{}:{}>", s, parent_type.link(url_root, file, options))
+                    format!(
+                        "{}:{}",
+                        generic_link,
+                        parent_type.link(url_root, file, options)
+                    )
                 } else {
-                    format!("<{}>", s)
+                    generic_link
                 }
             }
         }
@@ -363,14 +392,33 @@ impl Kind {
 
 // -------------------------------------------------------------------------------------------------
 
+#[derive(Copy, Clone)]
+enum NameFormat {
+    Plain,
+    Link,
+    Omit,
+}
+
 impl Var {
-    fn short(&self, url_root: &str, file: &Path, options: &Options) -> String {
+    fn short(
+        &self,
+        url_root: &str,
+        file: &Path,
+        options: &Options,
+        name_format: NameFormat,
+    ) -> String {
+        let kind = self.kind.link(url_root, file, options);
+
         if matches!(self.kind, Kind::SelfArg) {
-            self.kind.link(url_root, file, options)
+            kind
         } else if let Some(name) = self.name.clone() {
-            format!("{} : {}", name, self.kind.link(url_root, file, options))
+            match name_format {
+                NameFormat::Plain => format!("{} : {}", name, kind),
+                NameFormat::Link => format!("{} : {}", header_link(&name), kind),
+                NameFormat::Omit => kind,
+            }
         } else {
-            self.kind.link(url_root, file, options)
+            kind
         }
     }
 
@@ -379,7 +427,7 @@ impl Var {
         format!(
             "{}{}",
             hash(
-                &h3(&self.short(url_root, file, options)),
+                &h3(&self.short(url_root, file, options, NameFormat::Plain)),
                 &self.name.clone().unwrap_or_default()
             ),
             if desc.is_empty() {
@@ -413,33 +461,48 @@ impl Function {
     fn long(&self, url_root: &str, file: &Path, options: &Options) -> String {
         let name = self.name.clone().unwrap_or("fun".to_string());
         if self.params.is_empty() {
-            let name = hash(&h3(&format!("`{}()`", &name)), &name);
-            self.with_desc(&self.with_returns(&name, url_root, file, options))
+            let name = hash(&h3(&format!("`{}()`", name)), &name);
+            self.with_desc(&self.with_returns(&name, url_root, file, options, NameFormat::Plain))
         } else {
             let params = self
                 .params
                 .iter()
-                .map(|v| v.short(url_root, file, options))
+                .map(|v| v.short(url_root, file, options, NameFormat::Plain))
                 .collect::<Vec<String>>()
                 .join(", ");
 
             self.with_desc(&self.with_returns(
-                &hash(&format!("### {}({})", &name, params), &name),
+                &hash(&format!("### {}({})", name, params), &name),
                 url_root,
                 file,
                 options,
+                NameFormat::Plain,
             ))
         }
     }
-    fn short(&self, url_root: &str, file: &Path, options: &Options) -> String {
+    fn short(
+        &self,
+        url_root: &str,
+        file: &Path,
+        options: &Options,
+        name_format: NameFormat,
+        arg_format: NameFormat,
+    ) -> String {
         if self.params.is_empty() && self.returns.is_empty() {
             return self.empty();
         }
-        let returns = Self::render_vars(&self.returns, url_root, file, options);
+        let returns = Self::render_vars(&self.returns, url_root, file, options, arg_format);
         format!(
-            "{}({}){}",
-            &self.name.clone().unwrap_or_default(),
-            Self::render_vars(&self.params, url_root, file, options),
+            "{} ({}){}",
+            self.name
+                .clone()
+                .map(|n| match name_format {
+                    NameFormat::Plain => n,
+                    NameFormat::Link => header_link(&n),
+                    NameFormat::Omit => String::default(),
+                })
+                .unwrap_or_default(),
+            Self::render_vars(&self.params, url_root, file, options, arg_format),
             if returns.is_empty() {
                 returns
             } else {
@@ -448,11 +511,17 @@ impl Function {
         )
     }
     fn empty(&self) -> String {
-        format!("{}()", &self.name.clone().unwrap_or("fun".to_string()))
+        format!("{}()", self.name.clone().unwrap_or("fun".to_string()))
     }
-    fn render_vars(vars: &[Var], url_root: &str, file: &Path, options: &Options) -> String {
+    fn render_vars(
+        vars: &[Var],
+        url_root: &str,
+        file: &Path,
+        options: &Options,
+        name_format: NameFormat,
+    ) -> String {
         vars.iter()
-            .map(|v| v.short(url_root, file, options))
+            .map(|v| v.short(url_root, file, options, name_format))
             .collect::<Vec<String>>()
             .join(", ")
     }
@@ -464,11 +533,18 @@ impl Function {
             format!("{}\n{}", head, description(&desc))
         }
     }
-    fn with_returns(&self, head: &str, url_root: &str, file: &Path, options: &Options) -> String {
+    fn with_returns(
+        &self,
+        head: &str,
+        url_root: &str,
+        file: &Path,
+        options: &Options,
+        arg_format: NameFormat,
+    ) -> String {
         let returns = self
             .returns
             .iter()
-            .map(|v| v.short(url_root, file, options))
+            .map(|v| v.short(url_root, file, options, arg_format))
             .collect::<Vec<String>>()
             .join(", ");
         if returns.is_empty() {
@@ -481,7 +557,252 @@ impl Function {
 
 // -------------------------------------------------------------------------------------------------
 
+struct TocTree {
+    depth: usize,
+    tree: Vec<String>,
+}
+
+impl TocTree {
+    fn new() -> Self {
+        Self {
+            depth: 0,
+            tree: vec![],
+        }
+    }
+    fn indent(depth: usize, s: &str) -> String {
+        let indent = "\t".repeat(depth);
+        format!("{}{}", indent, s)
+    }
+    fn li(depth: usize, s: &str) -> String {
+        Self::indent(depth, &format!("* {}", s))
+    }
+    fn item(&mut self, item: String) {
+        self.tree.push(Self::li(self.depth, &item));
+    }
+    fn list<T>(&mut self, items: &[T], map_fun: impl Fn(&T) -> String) {
+        for item in items.iter().map(map_fun) {
+            self.item(item);
+        }
+    }
+    fn push(&mut self) {
+        self.depth += 1;
+    }
+    fn pop(&mut self) {
+        self.depth = self.depth.saturating_sub(1);
+    }
+    fn section<T>(&mut self, header: String, items: &[T], map_fun: impl Fn(&T) -> String) {
+        self.item(header);
+        self.push();
+        self.list(items, map_fun);
+        self.pop();
+    }
+    fn inner(&mut self, items: &[String]) {
+        self.push();
+        for item in items.iter() {
+            self.tree.push(Self::indent(self.depth, item))
+        }
+        self.pop();
+    }
+}
+
 impl Class {
+    const CONSTANTS: &'static str = "Constants";
+    const PROPERTIES: &'static str = "Properties";
+    const FUNCTIONS: &'static str = "Functions";
+    const STRUCTS: &'static str = "Structs";
+    const ALIASES: &'static str = "Aliases";
+
+    fn resolve(
+        &self,
+        structs: &HashMap<String, Class>,
+        aliases: &HashMap<String, Alias>,
+        options: &Options,
+    ) -> (Vec<Class>, Vec<Alias>) {
+        // append used local classes and aliases
+        let (local_class_names, local_alias_names) = match options.order {
+            // when organizing by files, inline used aliases only
+            OutputOrder::ByFile => (HashSet::new(), self.collect_local_aliases(aliases)),
+            // when organizing by class, inline everything the class refers to
+            OutputOrder::ByClass => self.collect_local_types(structs, aliases),
+        };
+        (
+            if self.scope != Scope::Local && !local_class_names.is_empty() && !structs.is_empty() {
+                let mut class_keys: Vec<String> = structs.keys().cloned().collect();
+                class_keys.sort();
+                class_keys
+                    .into_iter()
+                    .filter(|n| local_class_names.contains(n))
+                    .map(|n| structs.get(&n).unwrap().clone())
+                    .collect::<Vec<_>>()
+            } else {
+                vec![]
+            },
+            if !local_alias_names.is_empty() {
+                let mut alias_keys: Vec<String> = aliases.keys().cloned().collect();
+                alias_keys.sort();
+                alias_keys
+                    .into_iter()
+                    .filter(|n| local_alias_names.contains(n))
+                    .map(|n| aliases.get(&n).unwrap().clone())
+                    .collect::<Vec<_>>()
+            } else {
+                vec![]
+            },
+        )
+    }
+
+    fn toc(
+        &self,
+        url_root: &str,
+        structs: &HashMap<String, Class>,
+        aliases: &HashMap<String, Alias>,
+        options: &Options,
+    ) -> Vec<String> {
+        let mut toc = TocTree::new();
+
+        let file = self.file.clone().unwrap();
+
+        if !self.enums.is_empty() || !self.constants.is_empty() {
+            toc.item(section_link(Self::CONSTANTS));
+            toc.push();
+            toc.list(&self.constants, |v| {
+                v.short(url_root, &file, options, NameFormat::Link)
+            });
+            toc.list(&self.enums, |e| {
+                let name = e.name.clone();
+                let end = Class::get_end(&name).unwrap_or(&name);
+                header_link(end)
+            });
+            toc.pop();
+        };
+
+        if !self.fields.is_empty() {
+            toc.section(section_link(Self::PROPERTIES), &self.fields, |v| {
+                v.short(url_root, &file, options, NameFormat::Link)
+            });
+        };
+
+        if !self.functions.is_empty() {
+            toc.section(section_link(Self::FUNCTIONS), &self.functions, |f| {
+                f.short(url_root, &file, options, NameFormat::Link, NameFormat::Omit)
+            });
+        };
+
+        let (resolved_structs, resolved_aliases) = self.resolve(structs, aliases, options);
+
+        if !resolved_structs.is_empty() {
+            toc.item(section_link(Self::STRUCTS));
+            toc.push();
+            resolved_structs.iter().for_each(|c| {
+                let inner_toc = c.toc(url_root, structs, aliases, options);
+                toc.item(header_link(&c.name));
+                toc.inner(&inner_toc);
+            });
+            toc.pop();
+        };
+
+        if !resolved_aliases.is_empty() {
+            toc.item(section_link(Self::ALIASES));
+            toc.push();
+            resolved_aliases.iter().for_each(|c| {
+                toc.item(header_link(&c.name));
+            });
+            toc.pop();
+        };
+
+        toc.tree
+    }
+
+    fn header(&self) -> Vec<String> {
+        let name = if self.name == "global" {
+            "Global"
+        } else {
+            &self.name
+        };
+
+        let mut header = vec![h1(&hash(name, name))];
+
+        if !self.desc.is_empty() {
+            header.push(description(&self.desc))
+        }
+
+        header
+    }
+
+    fn body(
+        &self,
+        url_root: &str,
+        structs: &HashMap<String, Class>,
+        aliases: &HashMap<String, Alias>,
+        options: &Options,
+    ) -> Vec<String> {
+        let file = self.file.clone().unwrap_or_default();
+
+        let mut body = vec![];
+
+        if !self.enums.is_empty() || !self.constants.is_empty() {
+            body.push(divider());
+            body.push(h2(Self::CONSTANTS));
+            body.extend(self.enums.iter().map(|e| {
+                let name = e.name.clone();
+                let end = Class::get_end(&name).unwrap_or(&name);
+                format!("{}\n{}", hash(&h3(end), end), description(&e.desc))
+            }));
+            body.extend(
+                self.constants
+                    .iter()
+                    .map(|v| v.long(url_root, &file, options)),
+            );
+        };
+
+        if !self.fields.is_empty() {
+            body.push(divider());
+            body.push(h2(Self::PROPERTIES));
+            body.extend(self.fields.iter().map(|v| v.long(url_root, &file, options)));
+        };
+
+        if !self.functions.is_empty() {
+            body.push(divider());
+            body.push(h2(Self::FUNCTIONS));
+            body.extend(
+                self.functions
+                    .iter()
+                    .map(|f| f.long(url_root, &file, options)),
+            );
+        };
+
+        let (resolved_structs, resolved_aliases) = self.resolve(structs, aliases, options);
+
+        if !resolved_structs.is_empty() {
+            body.push(divider());
+            body.push(h1(Self::STRUCTS));
+            for s in resolved_structs.iter() {
+                body.push(divider());
+                body.push({
+                    let render_toc = false;
+                    s.render(url_root, render_toc, structs, aliases, options)
+                })
+            }
+            body.push(divider());
+        };
+
+        if !resolved_aliases.is_empty() {
+            body.push(divider());
+            body.push(h1(Self::ALIASES));
+            body.push(divider());
+            for a in resolved_aliases.iter() {
+                body.push(divider());
+                body.push({
+                    let file = self.file.clone().unwrap_or_default();
+                    a.render(url_root, &file, options)
+                })
+            }
+            body.push(divider());
+        };
+
+        body
+    }
+
     fn render(
         &self,
         url_root: &str,
@@ -490,112 +811,16 @@ impl Class {
         aliases: &HashMap<String, Alias>,
         options: &Options,
     ) -> String {
-        let name = if self.name == "global" {
-            "Global"
-        } else {
-            &self.name
-        };
-        let file = self.file.clone().unwrap_or_default();
+        let mut page = vec![];
 
-        let mut content = vec![h1(&hash(name, name))];
-
-        if !self.desc.is_empty() {
-            content.push(description(&self.desc))
-        }
+        page.extend(self.header());
 
         if render_toc {
-            content.push("\n<!-- toc -->\n".to_string());
+            page.extend(self.toc(url_root, structs, aliases, options))
         }
 
-        if !self.enums.is_empty() || !self.constants.is_empty() {
-            let enums = &self.enums;
-            let constants = &self.constants;
-            content.push(format!(
-                "{}\n{}\n{}",
-                h2("Constants"),
-                enums
-                    .iter()
-                    .map(|e| {
-                        let name = e.name.clone();
-                        let end = Class::get_end(&name).unwrap_or(&name);
-                        format!("{}\n{}", hash(&h3(end), end), description(&e.desc))
-                    })
-                    .collect::<Vec<String>>()
-                    .join("\n"),
-                constants
-                    .iter()
-                    .map(|v| v.long(url_root, &file, options))
-                    .collect::<Vec<String>>()
-                    .join("\n")
-            ))
-        }
+        page.extend(self.body(url_root, structs, aliases, options));
 
-        if !self.fields.is_empty() {
-            content.push("\n---".to_string());
-            content.push(format!(
-                "{}\n{}\n",
-                h2("Properties"),
-                self.fields
-                    .iter()
-                    .map(|v| v.long(url_root, &file, options))
-                    .collect::<Vec<String>>()
-                    .join("\n")
-            ))
-        }
-
-        let functions = &self.functions;
-        if !functions.is_empty() {
-            content.push("\n---".to_string());
-            content.push(format!(
-                "{}\n{}",
-                h2("Functions"),
-                functions
-                    .iter()
-                    .map(|f| f.long(url_root, &file, options))
-                    .collect::<Vec<String>>()
-                    .join("\n")
-            ))
-        }
-
-        // append used local classes and aliases
-        let (local_class_names, local_alias_names) = match options.order {
-            // when organizing by files, inline used aliases only
-            OutputOrder::ByFile => (HashSet::new(), self.collect_local_aliases(aliases)),
-            // when organizing by class, inline everything the class refers to
-            OutputOrder::ByClass => self.collect_local_types(structs, aliases),
-        };
-
-        // append all used local classes (structs)
-        if self.scope != Scope::Local && !local_class_names.is_empty() {
-            content.push("\n\n\n---".to_string());
-            content.push(h2("Structs"));
-            let mut class_names: Vec<&String> = structs.keys().collect();
-            class_names.sort();
-            for name in class_names {
-                if local_class_names.contains(name) {
-                    let struct_ = structs.get(name).unwrap();
-                    let render_toc = false;
-                    content.push(struct_.render(url_root, render_toc, structs, aliases, options));
-                }
-            }
-        }
-
-        // append all used local aliases
-        if !local_alias_names.is_empty() {
-            content.push("\n\n\n---".to_string());
-            content.push(h2("Aliases"));
-            let mut alias_names: Vec<&String> = aliases.keys().collect();
-            alias_names.sort();
-            for name in alias_names {
-                if local_alias_names.contains(name) {
-                    let file = self.file.clone().unwrap_or_default();
-                    content.push(aliases.get(name).unwrap().render(url_root, &file, options));
-                    content.push(String::new());
-                }
-            }
-        }
-
-        content.push("\n".to_string());
-        content.join("  \n")
+        page.join("\n")
     }
 }
