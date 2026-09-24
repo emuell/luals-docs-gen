@@ -720,7 +720,19 @@ impl Class {
             &self.name
         };
 
-        let mut header = vec![h1(&hash(name, name))];
+        // add an invisible element with the basename of the class to
+        // force the search index to include it
+        let basename = name.split('.').next_back().unwrap();
+        let with_tag = if basename != name {
+            format!(
+                "{} <span style=\"visibility: hidden\">{}</span>",
+                name, basename
+            )
+        } else {
+            name.to_string()
+        };
+
+        let mut header = vec![h1(&hash(&with_tag, name))];
 
         if !self.desc.is_empty() {
             header.push(description(&self.desc))
