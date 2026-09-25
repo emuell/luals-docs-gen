@@ -43,13 +43,11 @@
 > More global function docs
 ---
 # Structs
----
 # GlobalTestClass1 { #GlobalTestClass1 }
 ---
 ## Properties
 ### field1 : [`number`](../API/builtins/number.md) { #field1 }
 ### field2 : [`string`](../API/builtins/string.md) { #field2 }
----
 # GlobalTestClass2 { #GlobalTestClass2 }
 ---
 ## Properties
@@ -60,11 +58,9 @@
 ---
 # Aliases
 ---
----
 ### SomeAlias { #SomeAlias }
 [`string`](../API/builtins/string.md)  
 > This is an alias
----
 ---
 # SomeClassInstance { #SomeClassInstance }
 > SomeClass docs
@@ -76,9 +72,7 @@
 ### some_function([*self*](../API/builtins/self.md)) { #some_function }
 > SomeFunction docs
 ---
----
 # Aliases
----
 ---
 ### SomeAlias { #SomeAlias }
 [`string`](../API/builtins/string.md)  

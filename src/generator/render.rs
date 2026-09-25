@@ -792,19 +792,16 @@ impl Class {
             body.push(divider());
             body.push(h1(Self::STRUCTS));
             for s in resolved_structs.iter() {
-                body.push(divider());
                 body.push({
                     let render_toc = false;
                     s.render(url_root, render_toc, structs, aliases, options)
                 })
             }
-            body.push(divider());
         };
 
         if !resolved_aliases.is_empty() {
             body.push(divider());
             body.push(h1(Self::ALIASES));
-            body.push(divider());
             for a in resolved_aliases.iter() {
                 body.push(divider());
                 body.push({
