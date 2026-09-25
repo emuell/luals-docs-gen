@@ -37,22 +37,32 @@ impl Library {
                         .map(|v| v.to_string_lossy())
                         .expect("expecting class to have a valid source file path");
 
-                    let mut content = String::new();
-                    content.push_str(&h1(&file_stem));
+                    let mut content = vec![];
+                    content.push(h1(&file_stem));
 
-                    for class in Self::sort_classes(classes) {
+                    let sorted_classes = Self::sort_classes(classes);
+
+                    content.extend(
+                        sorted_classes
+                            .iter()
+                            .fold(TocTree::new(), |mut toc, class| {
+                                let url_root = "../";
+                                let inner_toc =
+                                    class.toc(url_root, &self.classes, &self.aliases, options);
+                                toc.item(header_link(&class.name));
+                                toc.inner(&inner_toc);
+                                toc
+                            })
+                            .tree,
+                    );
+
+                    content.extend(sorted_classes.iter().map(|class| {
                         let url_root = "../";
-                        let render_toc = true;
-                        content.push_str(&class.render(
-                            url_root,
-                            render_toc,
-                            &self.classes,
-                            &self.aliases,
-                            options,
-                        ));
-                        content.push_str("\n\n");
-                    }
-                    globals.push((file_stem.to_string(), content));
+                        let render_toc = false;
+                        class.render(url_root, render_toc, &self.classes, &self.aliases, options)
+                    }));
+
+                    globals.push((file_stem.to_string(), content.join("  \n")));
                 }
 
                 for class in self.classes_in_scopes(&[Scope::Modules]) {
@@ -72,15 +82,10 @@ impl Library {
                     } else {
                         "../../" // namespace childs
                     };
-                    let mut content = String::new();
-                    let render_toc = true;
-                    content.push_str(&class.render(
-                        url_root,
-                        render_toc,
-                        &self.classes,
-                        &self.aliases,
-                        options,
-                    ));
+
+                    let content =
+                        class.render(url_root, true, &self.classes, &self.aliases, options);
+
                     match class.scope {
                         Scope::Global => globals.push((class_name.clone(), content)),
                         Scope::Modules => {
@@ -713,7 +718,7 @@ impl Class {
 
     fn header(&self) -> Vec<String> {
         let name = if self.name == "global" {
-            "Global"
+            "global"
         } else {
             &self.name
         };
