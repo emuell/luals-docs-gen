@@ -1,13 +1,10 @@
 [book]
 authors = ["test"]
 language = "en"
-multilingual = false
 title = "API Generator Test Book"
 
 [build]
 create-missing = false
 
 [output.html]
-
-[output.linkcheck]
-warning-policy = "ignore"
+sidebar-header-nav = false
