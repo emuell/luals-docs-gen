@@ -3,9 +3,9 @@
 * [Constants](#constants)
 	* [API_VERSION](#API_VERSION) : [`number`](../API/builtins/number.md)
 * [Functions](#functions)
-	* [SomeClass](#SomeClass) () `->` [`SomeClassInstance`](#someclassinstance)
-	* global_function()
-	* [global_function2](#global_function2) () `->` [`GlobalTestClass1`](#globaltestclass1) | [`GlobalTestClass2`](#globaltestclass2)
+	* [SomeClass](#SomeClass) () `->` [`SomeClassInstance`](#SomeClassInstance)
+	* [global_function](#global_function) ()
+	* [global_function2](#global_function2) () `->` [`GlobalTestClass1`](#GlobalTestClass1) | [`GlobalTestClass2`](#GlobalTestClass2)
 * [Structs](#structs)
 	* [GlobalTestClass1](#GlobalTestClass1)
 		* [Properties](#properties)
@@ -14,7 +14,7 @@
 	* [GlobalTestClass2](#GlobalTestClass2)
 		* [Properties](#properties)
 			* [alias](#alias) : [`SomeAlias`](#SomeAlias)
-			* [field](#field) : [`GlobalTestClass1`](#globaltestclass1)
+			* [field](#field) : [`GlobalTestClass1`](#GlobalTestClass1)
 		* [Aliases](#aliases)
 			* [SomeAlias](#SomeAlias)
 	* [SomeClassInstance](#SomeClassInstance)
@@ -32,13 +32,13 @@
 ---
 ## Functions
 ### `SomeClass()` { #SomeClass }
-`->`[`SomeClassInstance`](#someclassinstance)  
+`->`[`SomeClassInstance`](#SomeClassInstance)  
 
 > SomeClassInstance Docs
 ### `global_function()` { #global_function }
 > Global function docs
 ### `global_function2()` { #global_function2 }
-`->`[`GlobalTestClass1`](#globaltestclass1) | [`GlobalTestClass2`](#globaltestclass2)  
+`->`[`GlobalTestClass1`](#GlobalTestClass1) | [`GlobalTestClass2`](#GlobalTestClass2)  
 
 > More global function docs
 ---
@@ -56,7 +56,7 @@
 ### alias : [`SomeAlias`](#SomeAlias) { #alias }
 > This is an alias
 
-### field : [`GlobalTestClass1`](#globaltestclass1) { #field }
+### field : [`GlobalTestClass1`](#GlobalTestClass1) { #field }
 ---
 # Aliases
 ---

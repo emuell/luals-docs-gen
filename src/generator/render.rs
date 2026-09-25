@@ -193,7 +193,7 @@ fn class_link(text: &str, url: &str, hash: &str) -> String {
 }
 
 fn local_class_link(text: &str, hash: &str) -> String {
-    format!("[`{}`](#{})", text, hash.to_lowercase())
+    format!("[`{}`](#{})", text, hash)
 }
 
 fn enum_link(text: &str, url: &str, hash: &str) -> String {
@@ -488,30 +488,28 @@ impl Function {
         name_format: NameFormat,
         arg_format: NameFormat,
     ) -> String {
-        if self.params.is_empty() && self.returns.is_empty() {
-            return self.empty();
-        }
+        let name = self
+            .name
+            .clone()
+            .map(|n| match name_format {
+                NameFormat::Plain => n,
+                NameFormat::Link => header_link(&n),
+                NameFormat::Omit => String::default(),
+            })
+            .unwrap_or_default();
+        let params = Self::render_vars(&self.params, url_root, file, options, arg_format);
         let returns = Self::render_vars(&self.returns, url_root, file, options, arg_format);
+
         format!(
             "{} ({}){}",
-            self.name
-                .clone()
-                .map(|n| match name_format {
-                    NameFormat::Plain => n,
-                    NameFormat::Link => header_link(&n),
-                    NameFormat::Omit => String::default(),
-                })
-                .unwrap_or_default(),
-            Self::render_vars(&self.params, url_root, file, options, arg_format),
+            name,
+            params,
             if returns.is_empty() {
-                returns
+                String::default()
             } else {
                 format!(" `->` {}", returns)
             }
         )
-    }
-    fn empty(&self) -> String {
-        format!("{}()", self.name.clone().unwrap_or("fun".to_string()))
     }
     fn render_vars(
         vars: &[Var],
