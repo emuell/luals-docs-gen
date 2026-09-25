@@ -1,31 +1,34 @@
-# acme.SomeClass<a name="acme.SomeClass"></a>  
-
-<!-- toc -->
-  
+# acme.SomeClass <span style="visibility: hidden">SomeClass</span> { #acme.SomeClass }
+* [Constants](#constants)
+	* [SOME_CONSTANT](#SOME_CONSTANT) : [`integer`](../../API/builtins/integer.md)
+	* [StatusCode](#StatusCode)
+* [Properties](#properties)
+	* [some_field](#some_field) : [`boolean`](../../API/builtins/boolean.md)
+	* [__index](#__index) : [`function`](../../API/builtins/function.md) | [`acme.SomeClass`](../../API/acme/acme.SomeClass.md)
+* [Functions](#functions)
+	* [some_function](#some_function) ([*self*](../../API/builtins/self.md))
+	* [function_with_enum_return](#function_with_enum_return) ([*self*](../../API/builtins/self.md)) `->` [`acme.SomeClass.StatusCode`](acme.SomeClass.md#StatusCode)
+---
 ## Constants
-### StatusCode<a name="StatusCode"></a>
+### StatusCode { #StatusCode }
 > ```lua
 > {
 >     OK: integer = 0,
 >     ERROR: integer = 1,
 > }
 > ```
-### SOME_CONSTANT : [`integer`](../../API/builtins/integer.md)<a name="SOME_CONSTANT"></a>
+### SOME_CONSTANT : [`integer`](../../API/builtins/integer.md) { #SOME_CONSTANT }
 > SOME_CONSTANT docs
-  
 
----  
+---
 ## Properties
-### some_field : [`boolean`](../../API/builtins/boolean.md)<a name="some_field"></a>
-### __index : [`function`](../../API/builtins/function.md) | [`acme.SomeClass`](../../API/acme/acme.SomeClass.md)<a name="__index"></a>
-  
-
----  
+### some_field : [`boolean`](../../API/builtins/boolean.md) { #some_field }
+### __index : [`function`](../../API/builtins/function.md) | [`acme.SomeClass`](../../API/acme/acme.SomeClass.md) { #__index }
+---
 ## Functions
-### some_function([*self*](../../API/builtins/self.md))<a name="some_function"></a>
+### some_function([*self*](../../API/builtins/self.md)) { #some_function }
 > This function does something.
-### function_with_enum_return([*self*](../../API/builtins/self.md))<a name="function_with_enum_return"></a>
+### function_with_enum_return([*self*](../../API/builtins/self.md)) { #function_with_enum_return }
 `->`[`acme.SomeClass.StatusCode`](acme.SomeClass.md#StatusCode)  
 
-> This function also does something and returns a status code enum.  
-
+> This function also does something and returns a status code enum.

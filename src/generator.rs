@@ -12,7 +12,7 @@ use crate::{
     generator::{
         library::Library,
         options::{Options, OutputOrder},
-        toc::{replace_toc_in_file, TocEntry},
+        toc::{TocEntry, replace_toc_in_file},
     },
 };
 
@@ -88,4 +88,16 @@ pub fn generate_docs(options: &Options) -> Result<(), Error> {
         replace_toc_in_file(&summary_file, &toc_links)?;
     }
     Ok(())
+}
+
+#[test]
+fn generate_test_docs() -> Result<(), Error> {
+    use std::path::PathBuf;
+    generate_docs(&Options {
+        library: PathBuf::from("./test/definitions/library"),
+        output: PathBuf::from("./test/src"),
+        excluded_classes: vec![],
+        order: OutputOrder::ByClass,
+        namespace: "acme".to_string(),
+    })
 }
