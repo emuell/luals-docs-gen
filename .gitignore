@@ -1,4 +1,5 @@
 /Cargo.lock
 /lua-language-server/
 /target
-/test/book/
+/test/by_class/book/
+/test/by_file/book/

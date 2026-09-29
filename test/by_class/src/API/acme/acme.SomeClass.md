@@ -1,15 +1,15 @@
 # acme.SomeClass <span style="visibility: hidden">SomeClass</span> { #acme.SomeClass }
-* [Constants](#constants)
+* [Constants](#Constants)
 	* [SOME_CONSTANT](#SOME_CONSTANT) : [`integer`](../../API/builtins/integer.md)
 	* [StatusCode](#StatusCode)
-* [Properties](#properties)
+* [Properties](#Properties)
 	* [some_field](#some_field) : [`boolean`](../../API/builtins/boolean.md)
 	* [__index](#__index) : [`function`](../../API/builtins/function.md) | [`acme.SomeClass`](../../API/acme/acme.SomeClass.md)
-* [Functions](#functions)
+* [Functions](#Functions)
 	* [some_function](#some_function) ([*self*](../../API/builtins/self.md))
 	* [function_with_enum_return](#function_with_enum_return) ([*self*](../../API/builtins/self.md)) `->` [`acme.SomeClass.StatusCode`](acme.SomeClass.md#StatusCode)
 ---
-## Constants
+## Constants { #Constants }
 ### StatusCode { #StatusCode }
 > ```lua
 > {
@@ -21,11 +21,11 @@
 > SOME_CONSTANT docs
 
 ---
-## Properties
+## Properties { #Properties }
 ### some_field : [`boolean`](../../API/builtins/boolean.md) { #some_field }
 ### __index : [`function`](../../API/builtins/function.md) | [`acme.SomeClass`](../../API/acme/acme.SomeClass.md) { #__index }
 ---
-## Functions
+## Functions { #Functions }
 ### some_function([*self*](../../API/builtins/self.md)) { #some_function }
 > This function does something.
 ### function_with_enum_return([*self*](../../API/builtins/self.md)) { #function_with_enum_return }

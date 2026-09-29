@@ -12,13 +12,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@v2
 
       - name: Build
         run: cargo build --verbose
       
       - name: Run tests
         run: cargo test --verbose
+
+      - name: Install mdbook
+        run: cargo install mdbook@^0.5
+
+      - name: Build Class-Book
+        run: cd ./test/by_class && mdbook build
+        
+      - name: Validate Class-Book Links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: --no-progress --offline --root-dir "$GITHUB_WORKSPACE/test/by_class/book" test/by_class/book
+          fail: true
+          
+      - name: Build File-Book
+        run: cd ./test/by_file && mdbook build
+        
+      - name: Validate File-Book Links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: --no-progress --offline --root-dir "$GITHUB_WORKSPACE/test/by_file/book" test/by_file/book
+          fail: true
+

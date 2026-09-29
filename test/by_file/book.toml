@@ -1,0 +1,10 @@
+[book]
+authors = ["test"]
+language = "en"
+title = "API Generator Test Book"
+
+[build]
+create-missing = false
+
+[output.html]
+sidebar-header-nav = false
